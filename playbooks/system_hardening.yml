@@ -1,0 +1,55 @@
+---
+- name: System Hardening & Security
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Update all packages
+      yum:
+        name: "*"
+        state: latest
+
+    - name: Disable root SSH login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+      notify: Restart SSH
+
+    - name: Disable password authentication (key-only)
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+      notify: Restart SSH
+
+    - name: Set SSH idle timeout (10 min)
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^ClientAliveInterval'
+        line: 'ClientAliveInterval 600'
+
+    - name: Install fail2ban
+      yum:
+        name: fail2ban
+        state: present
+
+    - name: Start and enable fail2ban
+      systemd:
+        name: fail2ban
+        state: started
+        enabled: true
+
+    - name: Set correct permissions on /etc/passwd
+      file:
+        path: /etc/passwd
+        mode: '0644'
+        owner: root
+        group: root
+
+  handlers:
+    - name: Restart SSH
+      systemd:
+        name: sshd
+        state: restarted

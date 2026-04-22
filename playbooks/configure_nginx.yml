@@ -1,0 +1,41 @@
+---
+- name: Install and Configure NGINX as Reverse Proxy
+  hosts: webservers
+  become: true
+
+  vars:
+    app_port: 5000
+    nginx_port: 80
+
+  tasks:
+
+    - name: Install NGINX
+      yum:
+        name: nginx
+        state: present
+
+    - name: Deploy NGINX config
+      template:
+        src: ../roles/common/tasks/nginx.conf.j2
+        dest: /etc/nginx/conf.d/devops-app.conf
+        mode: '0644'
+      notify: Restart NGINX
+
+    - name: Start and enable NGINX
+      systemd:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Open port 80 in firewall
+      firewalld:
+        port: "{{ nginx_port }}/tcp"
+        permanent: true
+        state: enabled
+      ignore_errors: true
+
+  handlers:
+    - name: Restart NGINX
+      systemd:
+        name: nginx
+        state: restarted
